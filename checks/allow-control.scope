@@ -1,0 +1,8 @@
+# This lane's history is REBUILT on every publish: the snapshot is squashed from the private tree, so a
+# history occurrence's key depends on the commit that landed it — including the baseline commit itself.
+# A history baseline here churns by construction and cannot converge (measured: v3 and v4 each died at the
+# post-commit control with one NEW allowed-history key nobody approved). Scope for THIS lane: tree only.
+# This narrows what the allow-marker control COMPARES, never what the gate SCANS: the gate still scans the
+# full history for leaks, and a marker silencing a private-overlay match still fails. See SANITISATION.md,
+# "Allow-control scope on a rebuilt lane", and the SCOPE note in checks/verify-allowed-hits.sh.
+tree
