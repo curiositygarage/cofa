@@ -1,0 +1,19 @@
+# Policy Layer (CEL) — Configuration Sample
+# Copy to config.yaml and adjust paths/values.
+
+engine: cel-python         # CEL evaluation library identifier
+
+rules_dir: "./rules/"      # Directory containing CEL rule files
+                             # Rules are loaded from *.cel files within this directory
+
+default_action: "DENY"     # What to do when a rule evaluates to UNKNOWN
+                           # Options: ALLOW, DENY, REPORT
+
+log_level: "info"          # Logging verbosity: debug, info, warn, error
+
+hardening:
+  enabled: true            # Do not disable — these close known policy leaks
+  rules:
+    - wipefs_protection       # Blocks disk device write operations
+    - etc_redirect_protection # Blocks output redirection into /etc/*
+    - chmod_flag_tolerance    # Matches chmod with flags before numeric mode

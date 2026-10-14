@@ -1,0 +1,18 @@
+# A2A Mesh Client — Configuration Sample
+# Copy to config.yaml and fill in peer endpoints.
+
+my_agent_id: "<your_agent_name>"  # Your identity string, sent in all outbound messages
+
+timeout_ms: 60000                 # HTTP request timeout (milliseconds)
+
+retry_attempts: 2                 # Retries on transient failures
+
+# Add one block per peer you want to reach. Names are yours to choose.
+# Two generic examples — expand with your real endpoints after setup.
+peers:
+  peer_a:
+    endpoint: "http://<host>:<port>/a2a"
+    id: "<peer_a_id>"
+  peer_b:
+    endpoint: "http://<host>:<port>/a2a"
+    id: "<peer_b_id>"

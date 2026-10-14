@@ -1,0 +1,34 @@
+# COFA policy rules — hardened baseline.
+#
+# Format: one [rule_name] block per rule. Keys: verdict (DENY|ASK|REPORT), reason, when.
+# `when` is a CEL-subset expression over the request context (command, tool, path).
+# Supported syntax is documented in README.md — anything outside it is reported as UNKNOWN
+# and the configured default_action applies, rather than silently passing.
+#
+# These three rules close specific bypass patterns. Do not delete or weaken them: each one
+# is here because a real invocation slipped past a check that only looked at command names.
+
+[wipefs_protection]
+verdict = DENY
+reason = disk signature, partition table or filesystem destruction requires explicit human approval
+when = matches(command, "(^|[\\s/;|&])(wipefs|mkfs|fdisk|parted|shred)([\\.\\s]|$)") or matches(command, "(^|\\s)dd\\s")
+
+[etc_redirect_protection]
+verdict = DENY
+reason = output redirection into /etc overwrites system configuration, even when the leading command is benign
+when = matches(command, ">\\s*/etc/")
+
+[chmod_flag_tolerance]
+verdict = DENY
+reason = recursive or flagged chmod is a privilege-escalation vector; the mode must be reviewed by a human
+when = matches(command, "(^|[\\s;|&])chmod\\s+(-{1,2}[A-Za-z-]+\\s+)*[0-7]{3,4}\\s+")
+
+[device_write_protection]
+verdict = DENY
+reason = writing to a raw block device (/dev/sd*, nvme*, vd*, xvd*, hd*, mmcblk*) destroys data and requires explicit human approval
+when = matches(command, ">\\s*/dev/(sd|nvme|vd|xvd|hd|mmcblk)") or matches(command, "\\btee\\b[^;|&]*\\s/dev/(sd|nvme|vd|xvd|hd|mmcblk)")
+
+[truncate_zero_protection]
+verdict = DENY
+reason = truncating a file to zero length destroys its contents and requires explicit human approval
+when = matches(command, "(^|[\\s;|&])truncate\\s+([^;|&]*\\s)?(-s|--size)(\\s+|=)0+(\\s|$)")

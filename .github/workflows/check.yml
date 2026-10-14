@@ -1,0 +1,131 @@
+# CI — one job per (Python version × long-term-memory client path).
+#
+# HONEST STATUS: this workflow has NOT been executed on GitHub. It was written against the
+# documented interfaces and validated only by running `checks/verify-all.sh --require-all`
+# locally on both client paths. Treat the first CI run as the test of this YAML — if it fails,
+# the failure is as likely to be here as in the code.
+#
+# What it does NOT prove: agent-to-agent behaviour against a third-party A2A peer. CI exercises
+# the shipped loopback peer only. See a2a-mesh/README.md -> Limits.
+name: check
+
+env:
+  # The gate must not pass a tree whose history it cannot scan (external review, round 5). A shallow
+  # clone or a bare mirror reads as green today. Set for every job; the gate's own selftest clears it
+  # internally, because it scans throwaway trees that are not checkouts by design.
+  COFA_REQUIRE_HISTORY: "1"
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.12"]
+        ltm-client: ["psycopg2", "psql"]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cofa_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      # fetch-depth: 0 — the gate scans git history, not just the working tree. A shallow clone
+      # would silently narrow the scan and let a deleted-but-published secret through.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4  cofa:sanitise-allow
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5  cofa:sanitise-allow
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: install the long-term-memory client under test
+        run: |
+          if [ "${{ matrix.ltm-client }}" = "psycopg2" ]; then
+            python -m pip install --upgrade pip psycopg2-binary
+          else
+            sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+            python -m pip install --upgrade pip
+          fi
+
+      # CI has no deployed config, so verify-all.sh provisions a throwaway one itself (the
+      # provisioning block in checks/verify-all.sh). That move is deliberate: a laptop and CI now
+      # exercise the same path, and no verifier can reach the operator's real ~/.config/cofa. All CI
+      # has to supply is the test database's credentials — nothing here is CI-specific config.
+      - name: test database credentials (the components' prerequisite)
+        run: |
+          {
+            echo "COFA_TEST_PG_HOST=127.0.0.1"
+            echo "COFA_TEST_PG_PORT=5432"
+            echo "COFA_TEST_PG_DATABASE=cofa_ci"
+            echo "COFA_TEST_PG_USER=postgres"
+            echo "COFA_TEST_PG_PASSWORD=postgres"
+          } >> "$GITHUB_ENV"
+
+      # Independent of the gate: this step must run even when `verify-all` is red, because GitHub
+      # skips the remaining steps once a step fails — the self-proof would go unexecuted exactly
+      # when the run is already broken. Self-proof: bash here is major 5, so the check MUST fail.
+      # An assertion that cannot fail makes the macOS step vacuous.
+      - name: bash-major check can fail (self-proof)
+        # `if <cmd>; then fail; fi` goes green whenever the command exits non-zero FOR ANY REASON
+        # — a typo in the path (127), a non-executable file (126), wrong arguments (2), a crash.
+        # Require the specific refusal: exit 1 AND its own message. (External review, round 5g.)
+        run: |
+          set +e
+          out="$(checks/assert-bash-major.sh "$(command -v bash)" 3 2>&1)"; rc=$?
+          set -e
+          echo "$out"
+          if [ "$rc" -ne 1 ] || ! printf '%s' "$out" | grep -q "wanted 3"; then
+            echo "self-proof invalid: expected exit 1 with a 'wanted 3' message (got rc=$rc)"; exit 1
+          fi
+
+      - name: gate + all four components
+        run: ./checks/verify-all.sh --require-all
+
+  # bash 3.2 is what macOS ships, and the gate is the FIRST thing a Mac cloner runs. The maintainer's
+  # Linux box cannot execute that shell, so this job is the only real test of the portability claim
+  # (external review, refuse-to-merge list). /bin/bash is called by absolute path on purpose: a
+  # Homebrew bash 5 earlier in PATH would make the job prove nothing.
+  portability-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4  cofa:sanitise-allow
+        with:
+          fetch-depth: 0        # the gate scans history, not just the tree
+      - name: the shell under test
+        # Portability is only proven on bash 3.2. Printing the version without asserting it lets a
+        # Homebrew bash 5 earlier in PATH satisfy the job, so a green run would prove nothing.
+        run: |
+          v="$(/bin/bash --version | head -1)"
+          echo "$v"
+          case "$v" in
+            *"version 3."*) ;;
+            *) echo "::error::expected /bin/bash major version 3, got: $v"; exit 1 ;;
+          esac
+      - name: the shell under test is bash 3 (the same assertion, as a reusable script)
+        # The Linux job proves this script can fail; this is the real assertion. Together they are
+        # the pairs rule: a check that has only ever passed is not evidence.
+        run: checks/assert-bash-major.sh /bin/bash 3
+      - name: portability scan (bash-4-only constructs)
+        run: /bin/bash checks/verify-portability.sh
+      - name: gate selftest (it must be able to fail)
+        run: /bin/bash bin/scan-sanitisation.sh --selftest
+      - name: gate scan (tree + history)
+        run: /bin/bash bin/scan-sanitisation.sh
+      - name: plant matrix (41 leak shapes — the same v4 matrix the Linux job runs)
+        run: /bin/bash checks/gate-plant-matrix-v4.sh bin/scan-sanitisation.sh
+      - name: history-state probe (under the runner's own /bin/bash)
+        # The probe runs the gate with ${BASH:-bash}, so invoking IT as /bin/bash pins the shell
+        # under test to the one this job asserts (bash 3.2). A Homebrew bash 5 earlier in PATH
+        # cannot then make the states pass under a shell the job never claimed to test. This job
+        # did not run the probe at all until now, so shallow / worktree / --filter clones and
+        # --absolute-git-dir were only ever exercised on Linux, where the git build differs.
+        run: /bin/bash checks/gate-history-state-probe.sh bin/scan-sanitisation.sh

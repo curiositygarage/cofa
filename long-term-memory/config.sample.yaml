@@ -1,0 +1,21 @@
+# Long-Term Memory — Configuration Sample
+# Copy to config.yaml and fill in real values.
+
+# The memory provider your platform runs (e.g. mem0). Recorded for your platform's config —
+# the shipped client does not read it and requires no provider package.
+provider: "<your_platform_provider>"
+
+pg:
+  host: "<host>"             # e.g. 127.0.0.1 or a remote PG host
+  port: 5432               # <port> — PostgreSQL port (standard)
+  database: "<database>"   # e.g., mem0 or mem0_<agent>
+  username: "<username>"   # e.g., mem0 or a per-agent user
+  password: "<YOUR_API_KEY>"  # Strong password; never commit real values
+
+namespace: "<agent_name>"  # Unique per agent sharing this Postgres instance
+
+# Used by a platform provider such as mem0, not by the shipped client (which keeps one table,
+# cofa_facts, keyed by namespace).
+collections:
+  - default                # Primary collection
+  # Add domain-specific collections below as needed

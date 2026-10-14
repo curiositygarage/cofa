@@ -1,0 +1,15 @@
+# Continuity — Configuration Sample
+# Copy to config.yaml and adjust paths if needed.
+
+# NOTE: YAML does not resolve ~ or $HOME automatically. The shipped client
+# expands both when it loads this file, so `~` here is fine; a hand-rolled
+# reader must do the same or it will create a literal "~" directory.
+
+checkpoints_dir: "~/.config/cofa/continuity/checkpoints/"
+resume_file: "~/.config/cofa/continuity/resume/LAST_TASK.md"
+
+auto_resume_phase: "ACTIVE"  # ACTIVE = resume on wake, IDLE = do not resume
+
+checkpoint_interval_seconds: 300  # Auto-save every 5 minutes during active work
+
+format: json                      # Checkpoint file format: json

@@ -1,0 +1,32 @@
+# real patterns file for scan-sanitisation.sh — loaded at runtime, never committed
+bin/sanitisation-patterns.txt
+
+# local-only, never published
+checks/denylist.local
+
+# internal build contract — do NOT publish (contains private infrastructure notes)
+BUILD-SPEC.md
+cofa-scratch/
+
+.bak-sanitise-*/
+
+# editor / OS noise
+*.swp
+*~
+.DS_Store
+
+# backups written by the build's edit tooling
+*.bak
+*.bak-*
+*.orig
+*.orig-*
+
+# python
+__pycache__/
+*.pyc
+
+# Accidental tree dumps: an archive of the checkout embeds .git/ and local-only files
+# (checks/denylist.local). Never commit one.
+*.zip
+*.tar.gz
+*.tgz

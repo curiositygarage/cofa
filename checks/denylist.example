@@ -1,0 +1,12 @@
+# checks/denylist.local — operator-specific strings the public repo must never contain.
+# This example file IS published; keep it placeholder-only. Copy to denylist.local
+# (git-ignored) and put your REAL values there. One extended-regex per line, # = comment.
+#
+# Types to cover:
+# your-own-name               # personal names, real first/last names
+# your-handle                 # social/github handles tied to you
+# your-host-hostname          # real machine hostnames and their short forms
+# your-agent-ids              # the agent_id strings your deployment uses
+# peer-a-name                 # your peers' agent names, in roster order
+# peer-of-yours-secret-script # private helper script filenames
+# internal-doctrine-name      # names of internal-only docs/rules

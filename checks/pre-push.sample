@@ -1,0 +1,254 @@
+#!/bin/sh
+# COFA pre-push sanitisation gate.
+#
+# Copy to .git/hooks/pre-push in your clone and `chmod +x` it - or run the gate by hand before
+# every push. See SANITISATION.md ("one gate, not a checklist").
+#
+# A gate nobody runs is documentation; this is the trigger.
+#
+# WHAT IT SCANS (external review 2026-10-14, finding COFA-SAN-002). Git hands a pre-push hook one
+# record per ref being updated, on stdin: <local-ref> <local-sha> <remote-ref> <remote-sha>. This
+# hook used to ignore stdin, record `git rev-parse HEAD`, and run the gate with no arguments - so it
+# scanned the CHECKOUT while the push could carry any object the pusher named. `git push origin
+# <oid>:refs/heads/x` presented content the hook never examined, and the audit line still read
+# HEAD=<sha>, which looked like proof of scope. It was not proof of scope; it was proof that a gate
+# ran somewhere. Now, for every non-deletion record:
+#   1. a temporary ref is created at the record's local-sha, so the gate's history scan
+#      (git rev-list --all) reaches exactly the objects about to be pushed;
+#   2. the pushed snapshot is exported and scanned as a TREE with the full tree rules, because the
+#      history scan (by design) only applies the unambiguous credential/topology classes;
+#   3. unreachable objects are checked, because an unreachable object is pushable by OID.
+# Temporary refs are removed afterwards. A deletion record (all-zero local sha) carries no content
+# and is skipped. A manual run (empty stdin) is refused unless COFA_PREPUSH_ALLOW_MANUAL=1: "no
+# records to scan" is not "nothing to scan".
+#
+# A second control runs here too: the allow-marker control (checks/verify-allowed-hits.sh). Marked
+# lines are printed by the gate but never fail it, so without this control a marker appended to a
+# real secret still exits 0 and the push proceeds (COFA-SAN-001). Like the overlay prover, a control
+# that cannot run is not a green one: every non-zero refuses the push.
+#
+# The audit line exists so a push is ATTRIBUTABLE after the fact: which commit, which gate
+# binary, whether the operator overlay was actually present, and whether its coverage was PROVEN.
+# Every append is checked: if the record cannot be persisted the push is refused, because an
+# unrecorded push is not attributable (COFA-SAN-004). A gate run without checks/denylist.local
+# checks the shipped pattern classes only, and a prover that exits 2 (overlay absent) must not be
+# mistaken for a pass.
+#
+# Order: prove the overlay FIRST, then resolve the push scope, then run the gate, then the controls.
+# The verdict has to be in the line, and the line has to exist even when the push is refused.
+#
+# Sign-off condition, do this by hand immediately before pushing:
+#     gh repo view --json visibility -q .visibility     # must print PRIVATE
+ROOT="$(git rev-parse --show-toplevel)"
+HEAD_SHA="$(git rev-parse HEAD)"
+GATE="bin/scan-sanitisation.sh"
+sha16() {  # macOS has no sha256sum; shasum is the portable spelling
+  if   command -v sha256sum >/dev/null 2>&1; then sha256sum       | cut -c1-16
+  elif command -v shasum    >/dev/null 2>&1; then shasum -a 256   | cut -c1-16
+  else sha256sum 2>/dev/null | cut -c1-16; fi
+}
+GATE_SHA="$(sha16 < "$ROOT/$GATE" 2>/dev/null)"
+PUSHER="$(id -un)@$(hostname)"
+STAMP="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+AUDIT_LOG="${COFA_PREPUSH_AUDIT:-$HOME/.cofa-pre-push-audit.log}"
+TMP="${TMPDIR:-/tmp}/cofa-prescan.$$"
+mkdir -p "$TMP" 2>/dev/null || { echo "  [scope] cannot create a scratch dir at $TMP - refusing." >&2; exit 1; }
+TEMP_REFS=""
+cleanup() {
+  for t in $TEMP_REFS; do git -C "$ROOT" update-ref -d "$t" 2>/dev/null || true; done
+  rm -rf "$TMP" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+case "$AUDIT_LOG" in
+  "$ROOT"/*)
+    # the pusher field is user@host, which the gate reads as an email address: an audit log
+    # inside the tree would become a finding of the very gate this hook runs.
+    echo "  [audit] refusing COFA_PREPUSH_AUDIT inside the repository ($AUDIT_LOG)" >&2
+    exit 1
+    ;;
+esac
+audit() {  # every record must persist, or the push is refused
+  if ! printf '%s\n' "$1" >> "$AUDIT_LOG" 2>/dev/null; then
+    echo "  [audit] cannot persist an audit record at $AUDIT_LOG - refusing: an unrecorded push is not attributable." >&2
+    exit 1
+  fi
+}
+
+if [ -f "$ROOT/checks/denylist.local" ]; then
+  OVERLAY="present($(grep -c -v '^[[:space:]]*\(#\|$\)' "$ROOT/checks/denylist.local" 2>/dev/null) entries)"
+else
+  OVERLAY="MISSING - pattern classes only"
+fi
+
+# The overlay's coverage is PROVEN here, not asserted: checks/verify-denylist.sh requires every
+# entry to have a canary that the gate actually flags when planted. It needs checks/denylist.local,
+# so it belongs in this hook rather than in CI.
+#
+# Any non-zero from the prover refuses the push - exit 2 (overlay absent) included. "No overlay to
+# prove" is not proof, it is an unproven gate, so it blocks. Same for a missing prover: an
+# unproven overlay is not a green one.
+PROVER="FAIL(no checks/verify-denylist.sh)"
+if [ -f "$ROOT/checks/verify-denylist.sh" ]; then
+  "$ROOT/checks/verify-denylist.sh"
+  prover_rc=$?
+  if [ "$prover_rc" -eq 0 ]; then
+    PROVER="PASS"
+  else
+    PROVER="FAIL(rc=$prover_rc)"
+  fi
+fi
+
+# ---- scope: exactly the refs this push updates ----------------------------------------------
+RECORDS="$(cat 2>/dev/null || true)"
+REFS_SCANNED=0
+SCOPE_RESULT="ok"
+if [ -n "$RECORDS" ]; then
+  while read -r local_ref local_sha remote_ref remote_sha; do
+    [ -n "$local_sha" ] || continue
+    case "$local_sha" in
+      *[!0]*) ;;                  # a real sha
+      *) continue ;;              # all zeros: a deletion, nothing to scan
+    esac
+    REFS_SCANNED=$((REFS_SCANNED + 1))
+    if ! git -C "$ROOT" cat-file -e "${local_sha}^{commit}" 2>/dev/null; then
+      audit "$STAMP pre-push HEAD=$HEAD_SHA gate=$GATE_SHA denylist=$OVERLAY prover=$PROVER refs=$REFS_SCANNED result=REFUSED(unreadable-ref) scope=$local_sha pusher=$PUSHER"
+      echo "  [scope] $local_ref -> $local_sha is not a commit this repository can read: refusing a push that cannot be scanned." >&2
+      exit 1
+    fi
+
+    # (1) make the pushed objects reachable so the gate's history scan sees them
+    tref="refs/cofa-prescan/$$-$REFS_SCANNED"
+    if git -C "$ROOT" update-ref "$tref" "$local_sha" 2>/dev/null; then
+      TEMP_REFS="$TEMP_REFS $tref"
+    else
+      audit "$STAMP pre-push HEAD=$HEAD_SHA gate=$GATE_SHA denylist=$OVERLAY prover=$PROVER refs=$REFS_SCANNED result=REFUSED(no-temp-ref) scope=$local_sha pusher=$PUSHER"
+      echo "  [scope] could not create $tref to make $local_sha scannable: refusing." >&2
+      exit 1
+    fi
+
+    # (2) full tree-rule coverage over exactly this pushed snapshot
+    SCOPE_DIR="$TMP/scope-$REFS_SCANNED"
+    mkdir -p "$SCOPE_DIR" 2>/dev/null
+    scope_rc=1
+    if git -C "$ROOT" archive "$local_sha" 2>/dev/null | tar -x -C "$SCOPE_DIR" 2>/dev/null; then
+      if [ -f "$ROOT/checks/denylist.local" ]; then
+        mkdir -p "$SCOPE_DIR/checks" 2>/dev/null
+        cp "$ROOT/checks/denylist.local" "$SCOPE_DIR/checks/denylist.local" 2>/dev/null || true
+      fi
+      # COFA_REQUIRE_HISTORY=0: this directory is a snapshot, not a checkout. Its history lives in
+      # the temp ref above, which the repo-root gate run covers.
+      COFA_REQUIRE_HISTORY=0 "$ROOT/$GATE" "$SCOPE_DIR" > "$TMP/scope-$REFS_SCANNED.out" 2>&1
+      scope_rc=$?
+      cat "$TMP/scope-$REFS_SCANNED.out" >&2
+    else
+      echo "  [scope] could not export $local_sha for a tree scan: refusing." >&2
+    fi
+    if [ "$scope_rc" -ne 0 ]; then
+      SCOPE_RESULT="REFUSED(pushed-content)"
+      SCOPE_RC="$scope_rc"
+    fi
+  done <<RECORDS_EOF
+$RECORDS
+RECORDS_EOF
+else
+  if [ "${COFA_PREPUSH_ALLOW_MANUAL:-0}" != "1" ]; then
+    echo "  [scope] no ref records on stdin: this looks like a manual run, so the push scope is unknown." >&2
+    echo "          Refusing: a working-tree scan is not a scan of what a push would publish." >&2
+    echo "          (Set COFA_PREPUSH_ALLOW_MANUAL=1 to run the working-tree gate only.)" >&2
+    audit "$STAMP pre-push HEAD=$HEAD_SHA gate=$GATE_SHA denylist=$OVERLAY prover=$PROVER refs=0 result=REFUSED(no-scope-records) pusher=$PUSHER"
+    exit 1
+  fi
+fi
+
+AUDIT="$STAMP pre-push HEAD=$HEAD_SHA gate=$GATE_SHA denylist=$OVERLAY prover=$PROVER refs=$REFS_SCANNED allow=PENDING"
+echo "  [audit] $AUDIT" >&2
+audit "$AUDIT"
+
+case "$PROVER" in
+  PASS) ;;
+  *)
+    echo "  [denylist] $PROVER - an unproven overlay: refusing the push." >&2
+    audit "$STAMP pre-push HEAD=$HEAD_SHA gate=$GATE_SHA denylist=$OVERLAY prover=$PROVER result=REFUSED(unproven-overlay) pusher=$PUSHER"
+    exit 1
+    ;;
+esac
+
+if [ "$SCOPE_RESULT" != "ok" ]; then
+  echo "  [scope] the content this push would publish did not pass the gate (rc=$SCOPE_RC): refusing." >&2
+  audit "$STAMP pre-push HEAD=$HEAD_SHA gate=$GATE_SHA denylist=$OVERLAY prover=$PROVER refs=$REFS_SCANNED result=$SCOPE_RESULT gate_rc=$SCOPE_RC pusher=$PUSHER"
+  exit 1
+fi
+
+# An unreachable object is pushable by OID, so it must pass the gate before a push is allowed -
+# and the gate's own history scan cannot see it (git rev-list --all stops at the refs). The check uses
+# --no-reflogs, the same standard as checks/verify-unreachable.sh in the release gate: an object alive
+# only in a local reflog is still pushable by whoever knows the OID, so "it is only in my reflog" is not
+# a reason to call it scanned. Remedy - `git gc --prune=now` alone is not enough when the reflog still
+# holds the object:
+UNREACHABLE="$(git -C "$ROOT" fsck --unreachable --no-reflogs --no-progress 2>/dev/null | grep -cE 'unreachable (commit|blob|tag)' || true)"
+[ -n "$UNREACHABLE" ] || UNREACHABLE=0
+if [ "$UNREACHABLE" -gt 0 ]; then
+  echo "  [scope] $UNREACHABLE unreachable object(s) exist; they are pushable by OID and unscanned by a ref-based scan." >&2
+  echo "          Run: git reflog expire --expire=now --all && git gc --prune=now    (then push again)" >&2
+  audit "$STAMP pre-push HEAD=$HEAD_SHA gate=$GATE_SHA denylist=$OVERLAY prover=$PROVER refs=$REFS_SCANNED result=REFUSED(unreachable-objects:$UNREACHABLE) pusher=$PUSHER"
+  exit 1
+fi
+
+# The GATE's own verdict is recorded too. Writing only the pre-gate line meant a refused push left an
+# audit entry that said a push was attempted and nothing about why it stopped - the refusal was
+# unattributable, and "gate=..." could not distinguish a clean run from one that found the leak
+# (external review, round 15).
+#
+# The RESULT line carries the gate's OWN findings, so a later reader knows what to look for and not
+# just that something was refused: findings=<count> rules=<distinct rule labels, capped at 5>.
+# No file paths, no line numbers, no matched text - the gate already masks denylist-derived labels
+# as "zq...(13 chars)", so the labels are as safe here as they are in a log (external review, round 16).
+#
+# A gate that could not run at all (rc=2) is recorded as ERROR(rc=2). "It could not run" and "it ran
+# clean" must never look the same in the audit file, and silence is worse than either.
+#
+# Known residual risk, documented rather than fixed: `git push --no-verify` bypasses this hook
+# entirely and leaves no audit line. Before any visibility flip, confirm the tip of main has a
+# matching result=ACCEPTED line. CI is the backstop for the shipped classes, but not for the private
+# overlay, which never leaves this machine.
+GATE_OUT="$TMP/gate.out"
+"$ROOT/$GATE" > "$GATE_OUT" 2>&1
+GATE_RC=$?
+cat "$GATE_OUT" >&2
+FINDINGS="$(grep -c '^  FAIL' "$GATE_OUT" 2>/dev/null || true)"
+[ -n "$FINDINGS" ] || FINDINGS=0
+RULES="$(grep '^  FAIL' "$GATE_OUT" 2>/dev/null | sed 's/([0-9]* chars)//' | awk '{print $2}' | sort -u | head -5 | paste -sd, - | tr ' ' '_')"
+[ -n "$RULES" ] || RULES="-"
+
+# The allow-marker control: the gate PRINTS marked hits but never fails on them, so printing is not
+# control. A control that cannot run (rc=2) refuses too - an unrun control is not a green one.
+ALLOW="PASS"
+allow_rc=0
+if [ -x "$ROOT/checks/verify-allowed-hits.sh" ]; then
+  "$ROOT/checks/verify-allowed-hits.sh" > "$TMP/allow.out" 2>&1
+  allow_rc=$?
+  cat "$TMP/allow.out" >&2
+  [ "$allow_rc" -eq 0 ] || ALLOW="FAIL(rc=$allow_rc)"
+else
+  ALLOW="FAIL(absent)"
+  echo "  [allow] checks/verify-allowed-hits.sh is not present/executable: an unrun allow-marker control is not a green one." >&2
+fi
+
+case "$GATE_RC" in
+  0) GATE_RESULT="ACCEPTED" ;;
+  2) GATE_RESULT="ERROR(rc=2)" ;;
+  *) GATE_RESULT="REFUSED(rc=$GATE_RC)" ;;
+esac
+[ "$allow_rc" -eq 0 ] || GATE_RESULT="REFUSED(allow-control)"
+
+echo "$STAMP pre-push HEAD=$HEAD_SHA gate=$GATE_SHA denylist=$OVERLAY prover=$PROVER refs=$REFS_SCANNED allow=$ALLOW gate_rc=$GATE_RC result=$GATE_RESULT findings=$FINDINGS rules=$RULES pusher=$PUSHER" >> "$AUDIT_LOG" 2>/dev/null || {
+  echo "  [audit] cannot persist the RESULT record at $AUDIT_LOG - refusing: an unrecorded push is not attributable." >&2
+  exit 1
+}
+
+if [ "$GATE_RC" -ne 0 ] || [ "$allow_rc" -ne 0 ]; then
+  echo "  [gate] the push was refused - see the RESULT line in $AUDIT_LOG." >&2
+  exit 1
+fi
+exit 0

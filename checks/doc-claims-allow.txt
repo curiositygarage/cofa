@@ -1,0 +1,9 @@
+# Names that are doc-only BY DESIGN, for checks/verify-doc-claims.py.
+# One per line: NAME then the doc path it is allowed in — a required path, because an
+# allowance for a reader-authored name in one file must not excuse the same name elsewhere. Reserve this file for names a reader is expected to
+# create themselves. A name that LOOKS like an environment variable but is not one is a doc bug:
+# fix the doc (name the real config field) instead of allowlisting it.
+EXPECTED_SHA256  policy-cel/downloads/README.md   # variable inside a reader-authored download.sh example, not a COFA name
+YOUR_API_KEY  KEYS-REQUIRED.md   # angle-bracket placeholder the reader replaces with their own secret; the tree only uses that shape in redaction fixtures
+YOUR_API_KEY  SANITISATION.md   # same placeholder, shown as the shape to use instead of a real credential
+TASK_STATE_REJECTED  a2a-mesh/README.md   # v0.3 protocol enum spelling a peer may emit and the client normalises; an accepted INPUT value, not a COFA variable
