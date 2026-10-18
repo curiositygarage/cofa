@@ -231,6 +231,16 @@ gate_step "unreachable objects (fsck --unreachable --no-reflogs must be empty)" 
 # a control that cannot run is not a control. It writes nothing, so it may sit before the scan.
 gate_step "allow-marker control (every allowed hit must be in the reviewed baseline)" \
           bash checks/verify-allowed-hits.sh
+# The allow-hit KEY STABILITY probe (round 26). An allowed hit's key is label + path + line + digest
+# and deliberately NOT the revision. The control once derived the label with `substr($0, 1, ...)`,
+# which counted the two fields but not the two spaces between them, gluing one character of the
+# location onto every label — on a history key, the first hex digit of the committing revision. A
+# baseline then churned on every commit and no lane could hold one, which is what pushed the snapshot
+# lane to narrow its comparison to the tree. Without this step an edit that reintroduces that
+# expression produces a fully green run: the behaviour would be unguarded, not unverified.
+# Non-vacuous: against the pre-fix control this probe fails 3 of 3 rewrite states.
+gate_step "allow-hit key stability (empty commit / amend / squash — one key set)" \
+          bash checks/allow-hit-key-stability.sh bin/scan-sanitisation.sh
 
 gate_step "gate scan (tree + history) — LAST, after every step that can write" bin/scan-sanitisation.sh
 

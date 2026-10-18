@@ -106,9 +106,14 @@ states its shape.
   plant matrix cases H3/H4 keep this visible rather than pretending otherwise.
 - **Allow-control scope on a rebuilt lane.** `checks/verify-allowed-hits.sh` compares tree *and* history
   occurrences by default. A lane whose history is regenerated on every publish — a squashed snapshot, where
-  every revision is rebuilt from the same tree — cannot hold a stable history baseline: a history
-  occurrence's identity depends on the commit that landed it, **including the baseline commit itself**, so
-  the comparison churns by construction and never converges. Such a lane commits
+  every revision is rebuilt from the same tree — the control was narrowed to tree occurrences because its
+  baseline appeared to churn against every rebuild. The cause was later found to be an off-by-one in the
+  verifier's label handling, not the rebuilt history: an occurrence's key deliberately does **not** carry the
+  revision, and the pre-fix control glued one character of the location onto the label (on a history hit, the
+  first hex digit of the commit that landed it). That is fixed and regression-tested by
+  `checks/allow-hit-key-stability.sh` (one key set across an empty commit, an amend and a squash), so the
+  narrow scope is a workaround whose necessity is being re-measured, not a property of rebuilt history.
+  Where the marker is present such a lane commits
   `checks/allow-control.scope` containing `tree`, and the control then compares tree occurrences only.
   This narrows what is **compared**, never what is **scanned**: the gate still scans the full history for
   leaks, and a marker on a private-overlay match still fails. The effective scope is printed on every run

@@ -8,15 +8,37 @@ All notable changes to this project are recorded here. The format follows
 
 ### Changed
 - `checks/verify-allowed-hits.sh` gains `--tree-only` and the lane-scope marker `checks/allow-control.scope`.
-  A lane that rebuilds its history on every publish (the public squashed snapshot) cannot hold a stable
-  history baseline — a history occurrence's key depends on the commit that landed it, including the baseline
-  commit itself, so the comparison churned and the control never converged. On such a lane the control now
-  compares **tree occurrences only**. This narrows the *comparison*, not the *scan*: the gate still scans the
+  The marker was introduced on the public squashed-snapshot lane, where the allow-hit baseline appeared to
+  churn against every rebuild and the control never converged. That churn was later traced to an off-by-one
+  in the verifier's label handling, not to a property of rebuilt history: an occurrence's key deliberately
+  does **not** carry the revision, and the pre-fix control glued one character of the location onto the label
+  (on a history hit, the first hex digit of the commit that landed it). The defect is fixed (the `b1e70ee`
+  key split) and regression-tested by `checks/allow-hit-key-stability.sh`, which holds one key set across an
+  empty commit, an amend and a squash. The narrow scope is therefore a workaround of unproven necessity, not
+  a documented property: it is re-measured — marker deleted, tree and history compared again — before this
+  ships as a release. Where the marker **is** present the control compares **tree occurrences only**. This narrows the *comparison*, not the *scan*: the gate still scans the
   full history for leaks, and a marker silencing a private-overlay match still fails. A development repo
   carries no marker file, so its scope stays tree + history — unchanged. The effective scope prints on every
   run and is recorded in the baseline header.
 
+### Security
+- **GitHub private vulnerability reporting is now enabled on the public repository.** `SECURITY.md` names
+  the *Security → Report a vulnerability* form as the only entry point instead of documenting its absence,
+  and keeps the no-email-address rule and the do-not-post-publicly rule. The pre-push-gate section no longer
+  says CI "has not yet executed on GitHub": it runs on every push and pull request, and that section now
+  points at the Actions tab rather than carrying a result that can go stale.
+
 ### Added
+- `checks/allow-hit-key-stability.sh` — the regression test for the allow-hit **key stability**
+  defect: one baseline, then an amend, an empty commit and a full squash, requiring the key set to be
+  identical in all four states. Against the pre-fix control it fails 3 of 3 rewrite states, because
+  every key then carried one character of the location glued to its label — on a history hit, the first
+  hex digit of the commit that landed it. Wired into `checks/verify-all.sh` as a gate step, so an edit
+  that reintroduces the expression cannot produce a green release run.
+- `checks/verify-allowed-hits.sh --scope tree|tree+history` — an explicit scope override, resolved ahead of
+  the committed marker. It exists because the key-stability probe's fixture is an ordinary throwaway
+  repository: on a lane that narrows to the tree, the fixture generated no history key at all and the probe
+  aborted as vacuous. The probe now asks for full scope explicitly; normal runs are unchanged.
 - `checks/verify-all.sh` — the single entry point: gate selftest, gate scan, then the four component
   verifiers. A component that cannot be verified exits 2 and is reported **NOT VERIFIED** rather
   than counted as a pass; `--require-all` makes that fatal (this is what CI runs).
@@ -52,8 +74,10 @@ All notable changes to this project are recorded here. The format follows
   printed matched values. Wired into `checks/verify-all.sh` as a gate step.
 - `checks/gate-plant-matrix-v3.sh` — 38 leak shapes (v2's 33 plus Q1–Q5 for the home-path classes
   below), pass/fail in both a UTF-8 locale and `LC_ALL=C`.
-- `checks/gate-redaction-probe-v2.sh` — 19 shapes (v1's 14 plus multi-line commit and tag bodies,
-  the non-placeholder peer key, and a file name matching a denylist REGEX entry). Wired into
+- `checks/gate-redaction-probe-v2.sh` — v1's 14 shapes plus multi-line commit and tag bodies,
+  the non-placeholder peer key, and a file name matching a denylist REGEX entry. The count is not
+  restated here on purpose: the harness prints its own `probes run:` line and that printed number is
+  the truth (a copied count here went stale as shapes were added). Wired into
   `checks/verify-all.sh` in place of v1; the v3 matrix replaces v2 there.
 - `policy-cel` `--strict` — for pre-action use: `UNKNOWN` becomes `DENY` and a normal no-match applies
   `default_action` instead of `ALLOW`. Without it a no-match is a legitimate `ALLOW rule=none`, which is
@@ -160,7 +184,8 @@ All notable changes to this project are recorded here. The format follows
   backup noise (`*.orig`, `*.bak`, `*~`, which `.gitignore` already keeps out of the repo) is
   skipped: it is not a shipped artifact.
 
-- The regression matrix moved to `checks/gate-plant-matrix-v4.sh` (41 shapes), run by both the
+- The regression matrix moved to `checks/gate-plant-matrix-v4.sh` (it prints its own `plants run:`
+  count — that printed line is the number, not a figure copied into prose), run by both the
   release check and the CI macOS job. W1–W3 pin the round-10 worktree fix: a `.git` pointer file
   must not alarm, the exclusion must not blind the gate to a leak planted beside it, and it must not
   extend to a symlink named `.git`. The macOS step *ran* v4 from the moment it was wired while its

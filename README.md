@@ -11,7 +11,7 @@ Installing the agent is easy. Maturing it (memory, policy, comms, continuity) is
 | Component | Folder | What it does |
 |---|---|---|
 | **Long-Term Memory** | `long-term-memory/` | Local-first recall via mem0 + PostgreSQL. Namespaced per agent. No cloud dependency. |
-| **CEL Policy Layer** | `policy-cel/` | Policy-as-code rules that evaluate before actions. Hardened against three known pattern leaks. |
+| **CEL Policy Layer** | `policy-cel/` | Policy-as-code rules that evaluate before actions. Hardened against the known pattern leaks catalogued in `policy-cel/rules/10-hardening.cel` — the rule file is the count, this line does not repeat it. |
 | **A2A Mesh Client** | `a2a-mesh/` | A2A client (pre-1.0 message shape under the v1.0 method name) — wiring and conventions. Enables two agents to exchange tasks reliably. |
 | **Continuity** | `continuity/` | Checkpoint + resume so a restart picks up the right task from a written file. Ground truth after crash. |
 
@@ -35,6 +35,9 @@ The net effect: a platform that behaves like one it's been running for months in
 git clone https://github.com/curiositygarage/cofa.git ~/projects/cofa
 cd ~/projects/cofa
 ```
+
+The repository is public. Pin a commit if you want a reproducible install. A private mirror is kept
+for work-in-progress and is not needed to use COFA.
 
 Read `SETUP-GUIDE.md` first — it presents the options through whatever surface your host offers (terminal TUI, web UI, or desktop app). Then install whichever component(s) you need.
 

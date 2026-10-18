@@ -10,7 +10,7 @@
 #
 #   checks/verify-allowed-hits.sh                 compare; exit 0 equal, 1 differs, 2 cannot run
 #   checks/verify-allowed-hits.sh --update        rewrite the baseline (refused when $CI is set); REVIEW the diff, then commit
-#   options: --gate PATH   --expected PATH   --tree-only   [DIR to scan, default: repository root]
+#   options: --gate PATH   --expected PATH   --tree-only   --scope tree|tree+history   [DIR to scan, default: repository root]
 #
 # SCOPE — which occurrences this control compares. By default the key set is tree AND history. A lane whose
 # history is REBUILT on every publish (a squashed snapshot: each revision is regenerated from the same tree)
@@ -39,10 +39,11 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --update)    UPDATE=1; shift ;;
     --tree-only) TREE_ONLY=1; shift ;;
+    --scope)     SCOPE_FLAG="$2"; shift 2 ;;
     --gate)      GATE="$2"; shift 2 ;;
     --expected)  EXPECTED="$2"; shift 2 ;;
     -h|--help)   sed -n '2,32p' "${BASH_SOURCE[0]}"; exit 0 ;;
-    -*)          echo "usage: $0 [--update] [--tree-only] [--gate PATH] [--expected PATH] [DIR]" >&2; exit 2 ;;
+    -*)          echo "usage: $0 [--update] [--tree-only] [--scope tree|tree+history] [--gate PATH] [--expected PATH] [DIR]" >&2; exit 2 ;;
     *)           TARGET="$1"; shift ;;
   esac
 done
@@ -50,8 +51,13 @@ done
 # Lane scope: the explicit flag wins, else the committed marker, else the development default (tree + history).
 # Resolved BEFORE the gate runs, and printed on every run, so a scope change is always visible in the output.
 SCOPE="tree+history"
-if [ "$TREE_ONLY" -eq 1 ]; then
+if [ "$TREE_ONLY" -eq 1 ] || [ "${SCOPE_FLAG:-}" = "tree" ]; then
   SCOPE="tree-only (--tree-only)"
+elif [ "${SCOPE_FLAG:-}" = "tree+history" ]; then
+  # Explicit widening. Exists for the key-stability probe: its fixture is a throwaway repository with
+  # normal history, so it must be compared on history keys even when the lane under test is tree-only —
+  # the defect being regression-tested only ever appeared on a history key.
+  SCOPE="tree+history (--scope)"
 elif [ -f "$SCOPE_FILE" ] && grep -qE '^[[:space:]]*tree(-only)?[[:space:]]*(#.*)?$' "$SCOPE_FILE"; then
   SCOPE="tree-only (checks/allow-control.scope)"
 fi
@@ -75,7 +81,7 @@ COFA_REQUIRE_HISTORY="${COFA_REQUIRE_HISTORY:-1}" "$GATE" "$TARGET" > "$TMP/gate
 grep -aE '^  ok +allowed(-history)?:' "$TMP/gate.out" | sed -E 's/^  ok +//' | awk '
   { dig = $NF; loc = $(NF-1)
     if (loc !~ /:/ || dig !~ /^[0-9a-f]+$/) { print "MALFORMED:" $0; next }
-    pre = substr($0, 1, length($0) - length(loc) - length(dig)); sub(/[ \t]+$/, "", pre); gsub(/ /, "_", pre)
+    pre = $0; sub(/[ \t]+[^ \t]+[ \t]+[^ \t]+[ \t]*$/, "", pre); gsub(/ /, "_", pre)
     n = split(loc, a, ":")
     hist = (pre ~ /^allowed-history:/)
     path = hist ? a[2] : a[1]

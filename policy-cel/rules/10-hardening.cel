@@ -5,7 +5,7 @@
 # Supported syntax is documented in README.md — anything outside it is reported as UNKNOWN
 # and the configured default_action applies, rather than silently passing.
 #
-# These three rules close specific bypass patterns. Do not delete or weaken them: each one
+# These rules close specific bypass patterns. Do not delete or weaken them: each one
 # is here because a real invocation slipped past a check that only looked at command names.
 
 [wipefs_protection]

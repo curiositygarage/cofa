@@ -2,14 +2,15 @@
 
 ## Reporting a vulnerability
 
-Use **GitHub private vulnerability reporting** on this repository
-(*Security → Report a vulnerability*). Please do not open a public issue or pull request for a
-security problem.
+Use **GitHub private vulnerability reporting** on this repository — *Security → Report a
+vulnerability* in the repository's Security tab. That channel is enabled as of 2026-10-18, and it is
+the only entry point: do not open a public issue or pull request for a security problem.
 
-There is deliberately **no email address in this file**. A personal address in a public repo gets
-harvested, and a reporting channel nobody monitors is worse than none. If private reporting is not
-enabled on this repository, treat that as a configuration gap worth opening an issue about — without
-naming the vulnerability.
+There is deliberately **no email address in this file**. A personal address in a public repository
+gets harvested, and a reporting channel nobody monitors is worse than none. If the private report
+form is ever unavailable to you, open an issue whose entire content is *"Security report — private
+reporting form unavailable"* and name nothing else: not the component, not the file, not how to
+reproduce it.
 
 ## What counts as a vulnerability here
 
@@ -31,7 +32,9 @@ published yet is a missing pattern.
 
 ## The pre-push gate, its audit log, and what it does not cover
 
-`checks/pre-push.sample` is the trigger for the gate. Copied to `.git/hooks/pre-push`, it:
+`checks/pre-push.sample` is the trigger for the gate. **In a fresh clone it is only a sample: there is
+no hook here, therefore no audit log either, and the only control that runs in a clone is the CI
+workflow described below.** Copied to `.git/hooks/pre-push`, it:
 
 - reads the **ref records git hands a pre-push hook on stdin** (`<local-ref> <local-sha>
   <remote-ref> <remote-sha>`), creates a temporary ref at each pushed object so the gate's history
@@ -61,8 +64,10 @@ Limits, stated rather than implied:
 - **`git push --no-verify` bypasses the hook entirely and writes no audit line.** That is a residual
   risk of any hook-based control, and it is documented rather than fixed. Before any visibility
   change, confirm the tip of `main` has a matching `result=ACCEPTED` line — an absent line is not a
-  clean push. CI covers the shipped pattern classes for every push that reaches GitHub; it does
-  **not** cover the private overlay (`checks/denylist.local` never leaves the operator's machine).
+  clean push. The shipped CI workflow (`.github/workflows/check.yml`, triggered on every push and
+  pull request) runs the gate for every push that reaches GitHub. It is green on this branch — check
+  the Actions tab for the latest run rather than trusting a result written here. It does **not** cover the
+  private overlay (`checks/denylist.local` never leaves the operator's machine).
 - **A hook is only as good as its installation.** The control above exists only where
   `checks/pre-push.sample` has been copied into `.git/hooks/pre-push`; a clone without it has the CI
   gate and nothing else. `checks/verify-all.sh` runs the same checks server-side of the decision.
@@ -82,6 +87,10 @@ Limits, stated rather than implied:
 - **The A2A client trusts its peers' endpoints.** `--sender` / `metadata.sender` is a self-asserted
   label, not authentication: a peer derives the caller's identity from the connection, never from
   the message.
+- **`long-term-memory` stores facts in plain text.** The store is local-first, not encrypted: the
+  facts, and the database password in its config file, are readable by anyone who can read those
+  files or reach the database. It is a recall layer, not a secrets vault — do not put credentials in
+  a memory fact.
 
 ## Supported versions
 

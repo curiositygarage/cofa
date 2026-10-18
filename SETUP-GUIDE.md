@@ -84,7 +84,7 @@ See: `long-term-memory/README.md`
 
 ### policy-cel/
 
-Installs the CEL policy evaluation layer with three hardened rule patterns. Gives you declarative policy enforcement that evaluates before actions. Configuration-only — no binary downloads needed.
+Installs the CEL policy evaluation layer with the hardened rule baseline in `policy-cel/rules/10-hardening.cel`. Gives you declarative policy enforcement that evaluates before actions. Configuration-only — no binary downloads needed.
 
 See: `policy-cel/README.md`
 

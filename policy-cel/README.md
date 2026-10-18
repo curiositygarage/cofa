@@ -8,7 +8,10 @@
 
 Provides a Common Expression Language (CEL) evaluation layer that runs policy checks against action contexts. Instead of hard-coding allow/deny logic in your agent's control flow, you write declarative rules in CEL format and let the engine evaluate them at runtime.
 
-Includes three hardened rule patterns that close known policy leak vectors discovered in earlier deployments.
+Includes a hardened rule baseline (`rules/10-hardening.cel`) that closes known policy leak vectors
+discovered in earlier deployments. Each rule in that file is there because a real invocation slipped
+past a check that only looked at command names — read the file for what is covered rather than
+copying a count that drifts.
 
 ---
 
@@ -114,6 +117,10 @@ verdict is `ALLOW rule=none`. `default_action` applies only to UNKNOWN, not to "
 ---
 
 ## The three hardening fixes
+
+This section documents the three fixes that came out of the first external review. The shipped
+baseline (`rules/10-hardening.cel`) also carries a raw-device write rule and a zero-truncation rule;
+that file is the authoritative list of what is enforced.
 
 These rules are bundled and must remain enabled. They close specific policy bypass patterns:
 
