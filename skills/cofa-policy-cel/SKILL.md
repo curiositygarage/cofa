@@ -71,13 +71,24 @@ baseline unless you can say which attack each removed rule prevented.
   you since retired, teaches everyone to bypass the gate. Re-read the rules when the toolset changes.
 - **Evaluate the exact string you will execute.** Checking a normalised or display form of a command
   and then running a different string is the classic gap.
+- **A no-match verdict is ALLOW, not DENY.** `rule=none` means the shipped baseline has no rule for
+  that command — `default_action` applies to UNKNOWN, not to no-match (`README.md`, "verdict is
+  ALLOW rule=none"). So the baseline is a tripwire over the destructive shapes it names, not a
+  fail-closed gate over arbitrary commands. Never describe it as one, and never put an uncovered
+  command in a Verify step expecting DENY: `rm -rf /` is not covered and returns `ALLOW rule=none`.
 
 ## Verify
 
+Run these from the component directory (`policy-cel/`); `./checks/verify.sh` does not resolve from
+the repo root.
+
 ```bash
+cd policy-cel                                              # from the repo root
 ./checks/verify.sh
-python3 lib/policy.py decide --command "rm -rf /"     # expect DENY
-python3 lib/policy.py decide --command "ls -la"        # expect ALLOW
+python3 lib/policy.py decide --command "mkfs.ext4 /dev/sdb1"   # expect DENY  (wipefs_protection)
+python3 lib/policy.py decide --command "chmod -R 777 /"        # expect DENY  (chmod_flag_tolerance)
+python3 lib/policy.py decide --command "ls -la"                # expect ALLOW (no rule matched)
+python3 lib/policy.py decide --command "rm -rf /"              # expect ALLOW rule=none — rm is NOT in the baseline
 ```
 
 MIT licensed. See `LICENSE`.

@@ -59,14 +59,21 @@ and say so out loud rather than pretending the task was never running.
   measured state: what is done, what is verified, what is blocked and on whom.
 - **Stale checkpoints resume wrong work.** Clear it when the task closes, and overwrite it when the
   priority changes. Do not leave several plausible ACTIVE files around.
-- **Auto-resume needs a phase, not a flag.** Omitting the phase must default to non-resuming, so an
-  interrupted save cannot silently restart work nobody asked for.
+- **Omitting `--phase` inherits `auto_resume_phase`, which defaults to ACTIVE** — so a save with no
+  phase **is** resumable, and that is not a safe default (`lib/checkpoint.py:144`; `config.sample.yaml`).
+  Verified: no `--phase` writes `phase=ACTIVE` and `resolve` returns RESUMABLE; `--phase IDLE` returns
+  NOT-RESUMABLE. If you want omission to mean "do not resume", set `auto_resume_phase: IDLE` in your
+  config and pass `--phase ACTIVE` only for work that should actually be picked up.
 - **Atomic write.** Write to a temporary file and rename, or a crash mid-write leaves a truncated
   checkpoint that resumes nothing.
 
 ## Verify
 
+Run from the component directory (`continuity/`); `./checks/verify.sh` does not resolve from the
+repo root.
+
 ```bash
+cd continuity        # from the repo root
 ./checks/verify.sh
 ```
 
