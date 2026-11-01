@@ -62,7 +62,9 @@ The resolution order is worth knowing before you write rules (`policy.py:210-220
   with an ASK rule at `50-x.cel` and a REPORT rule at `60-y.cel`, the REPORT is what comes back.
   So make the intended precedence explicit in the filenames.
 - **`ALLOW` is what is left**, not a rule verdict: no rule matched (`ALLOW rule=none`) or the
-  engine found nothing to deny.
+  engine found nothing to deny. Under `--strict` the no-match case takes `default_action` instead
+  (`policy.py:222-225`, reason `no rule matched (strict: default_action applies)`), so `ALLOW` is
+  not guaranteed there.
 
 Exit codes carry meaning, and the verdict word is the decision:
 
