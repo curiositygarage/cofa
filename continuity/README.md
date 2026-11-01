@@ -24,7 +24,8 @@ None beyond a filesystem with write access to the agent's home directory.
 
 ### Steps
 
-1. Copy the sample directory structure:
+1. Copy the sample directory structure (run this from the component directory — `cd continuity`
+   from the repo root; `config.sample.yaml` lives there, not at the top level):
 
 ```bash
 mkdir -p ~/.config/cofa/continuity/checkpoints

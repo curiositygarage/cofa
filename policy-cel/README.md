@@ -26,7 +26,8 @@ copying a count that drifts.
 
 ### Steps
 
-1. Copy the sample config and the rule set:
+1. Copy the sample config and the rule set (run this from the component directory — `cd
+   policy-cel` from the repo root; `config.sample.yaml` and `rules/` live there):
 
 ```bash
 mkdir -p ~/.config/cofa/policy-cel/rules

@@ -26,12 +26,18 @@ This is your agent's external memory: what it remembers when it wakes up after a
 
 ### Steps
 
-1. Create the database and user:
+1. Create the role and the database — two statements, one path (run this from the component
+   directory, `cd long-term-memory` from the repo root):
 
 ```bash
-sudo -u postgres createdb <database_name>
-sudo -u postgres psql -c "CREATE USER <username> WITH PASSWORD '<PASSWORD>'; CREATE DATABASE <database_name> OWNER <username>; GRANT ALL PRIVILEGES ON DATABASE <database_name> TO <username>;"
+sudo -u postgres createuser --pwprompt <username>
+sudo -u postgres createdb --owner <username> <database_name>
 ```
+
+   Do **not** also run `CREATE DATABASE` inside a `psql -c "…; …"` block. A multi-statement `-c`
+   is wrapped in one transaction and `CREATE DATABASE` cannot run inside a transaction block, so
+   that form fails even on a clean install — and running both paths makes the second one fail with
+   "already exists".
 
 2. Copy the sample config:
 

@@ -16,12 +16,14 @@ Two agents can exchange a task reliably once this is wired up. The acceptance cr
 
 ### Prerequisites
 
-- **Node.js 18+** or **Python 3.9+**, depending on the client implementation you choose.
+- **Python 3.9+.** There is no Node.js client in this tree — `lib/a2a_client.py` is the only
+  implementation, and it imports nothing outside the standard library.
 - Access to at least one peer's A2A endpoint (resolved from your platform's peer list).
 
 ### Steps
 
-1. Copy the sample config:
+1. Copy the sample config (run this from the component directory — `cd a2a-mesh` from the repo
+   root; `config.sample.yaml` lives there, not at the top level):
 
 ```bash
 mkdir -p ~/.config/cofa/a2a-mesh
