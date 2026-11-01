@@ -1,0 +1,45 @@
+# COFA — Common Operation Framework for Agent
+
+> A platform-agnostic maturity layer. Takes a bare agent platform, hosted or self-run, open or closed
+> source, and gives it the four things that normally take weeks to build: durable memory, a policy
+> gate, peer messaging, and restart continuity.
+
+Installing an agent is easy. Maturing it is what costs weeks. Each component here is self-contained,
+independently installable, and documented with what to change, how to verify it works, and how to
+roll back. You may only need one of them.
+
+Canonical source: https://github.com/curiositygarage/cofa
+
+## Skills
+
+- [cofa-continuity](https://github.com/curiositygarage/cofa/blob/main/skills/cofa-continuity/SKILL.md): checkpoint and resume; a written file becomes ground truth after a restart.
+- [cofa-long-term-memory](https://github.com/curiositygarage/cofa/blob/main/skills/cofa-long-term-memory/SKILL.md): local PostgreSQL fact store, namespaced per agent, no cloud dependency.
+- [cofa-policy-cel](https://github.com/curiositygarage/cofa/blob/main/skills/cofa-policy-cel/SKILL.md): CEL policy-as-code evaluated before actions, with a hardened rule baseline.
+- [cofa-a2a-mesh](https://github.com/curiositygarage/cofa/blob/main/skills/cofa-a2a-mesh/SKILL.md): agent-to-agent task exchange over HTTP with exit codes that separate transport from task outcomes.
+
+## Components
+
+- [long-term-memory](https://github.com/curiositygarage/cofa/blob/main/long-term-memory/README.md): memory client, schema, verification script.
+- [policy-cel](https://github.com/curiositygarage/cofa/blob/main/policy-cel/README.md): evaluator, sample rules, verification script.
+- [a2a-mesh](https://github.com/curiositygarage/cofa/blob/main/a2a-mesh/README.md): client, peer config, verification script.
+- [continuity](https://github.com/curiositygarage/cofa/blob/main/continuity/README.md): checkpoint client, resume convention.
+
+## Repo docs
+
+- [README](https://github.com/curiositygarage/cofa/blob/main/README.md): what each component gives you and how to navigate.
+- [SETUP-GUIDE](https://github.com/curiositygarage/cofa/blob/main/SETUP-GUIDE.md): ordering and end-to-end setup.
+- [KEYS-REQUIRED](https://github.com/curiositygarage/cofa/blob/main/KEYS-REQUIRED.md): every placeholder value each component expects.
+- [SECURITY](https://github.com/curiositygarage/cofa/blob/main/SECURITY.md): threat notes and reporting.
+- [SANITISATION](https://github.com/curiositygarage/cofa/blob/main/SANITISATION.md): what is deliberately excluded from this repository.
+- [VERSION](https://github.com/curiositygarage/cofa/blob/main/VERSION): current release string.
+- [CHANGELOG](https://github.com/curiositygarage/cofa/blob/main/CHANGELOG.md): release history.
+
+## Requirements
+
+PostgreSQL 14+ for memory, Python 3.9+ standard library for the shipped clients, Node.js 18+ only if
+you pick the Node A2A client. Nothing else is downloaded at install time.
+
+## Optional
+
+- Environment overrides and config fields are documented per component in its `README.md`.
+- `checks/verify.sh` in each component is the acceptance test to run before trusting an install.
