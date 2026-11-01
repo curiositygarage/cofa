@@ -21,10 +21,14 @@ Source: https://github.com/curiositygarage/cofa (component: `a2a-mesh/`)
 
 ## Install
 
-Node.js 18+ or Python 3.9+, depending on the client you use. The shipped Python client needs no
-packages.
+Python 3.9+ standard library only. `lib/a2a_client.py` is the **only** client this component ships,
+and it needs no packages — there is no Node.js client, so do not plan around one.
+
+Run these from the component directory (`a2a-mesh/`); the sample config lives there, not at the
+repo root.
 
 ```bash
+cd a2a-mesh           # from the repo root
 mkdir -p ~/.config/cofa/a2a-mesh
 cp config.sample.yaml ~/.config/cofa/a2a-mesh/config.yaml
 ```

@@ -29,13 +29,21 @@ the same database and treat this component as the schema and the fallback client
 Prerequisites: PostgreSQL 14+ running locally, Python 3.9+ standard library. `psycopg2` is used when
 present, otherwise the client drives the `psql` client.
 
+Run these from the component directory (`long-term-memory/`); the sample config lives there, not
+at the repo root.
+
 ```bash
-sudo -u postgres createdb <database_name>
-sudo -u postgres psql -c "CREATE USER <username> WITH PASSWORD '<PASSWORD>';
-  CREATE DATABASE <database_name> OWNER <username>;"
+cd long-term-memory   # from the repo root
+sudo -u postgres createuser --pwprompt <username>
+sudo -u postgres createdb --owner <username> <database_name>
 mkdir -p ~/.config/cofa/long-term-memory
 cp config.sample.yaml ~/.config/cofa/long-term-memory/config.yaml
 ```
+
+One path, not two: `createuser`/`createdb` create the role and the database in separate
+statements. Do not also run `CREATE DATABASE` inside a `psql -c "…; …"` block — a multi-statement
+`-c` is wrapped in a single transaction, and `CREATE DATABASE` cannot run inside a transaction
+block, so that form fails even on a clean install.
 
 Fill in `pg.host`, `pg.database`, `pg.username`, `pg.password`, and `namespace` in the config. Keep
 that file at mode 600 and out of version control.

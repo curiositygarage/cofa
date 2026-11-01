@@ -1,19 +1,15 @@
 # Policy Layer (CEL) — Configuration Sample
 # Copy to config.yaml and adjust paths/values.
+#
+# These two keys are the whole surface. lib/policy.py reads `rules_dir` (policy.py:264) and
+# `default_action` (:301) and nothing else here. Earlier versions of this file also carried
+# `engine`, `log_level` and a `hardening:` block — none of them were ever read, so they
+# advertised controls that did not exist and have been removed.
 
-engine: cel-python         # CEL evaluation library identifier
+rules_dir: "./rules/"      # Directory containing CEL rule files, loaded from *.cel
+                           # Resolved relative to this config file when not absolute
 
-rules_dir: "./rules/"      # Directory containing CEL rule files
-                             # Rules are loaded from *.cel files within this directory
-
-default_action: "DENY"     # What to do when a rule evaluates to UNKNOWN
-                           # Options: ALLOW, DENY, REPORT
-
-log_level: "info"          # Logging verbosity: debug, info, warn, error
-
-hardening:
-  enabled: true            # Do not disable — these close known policy leaks
-  rules:
-    - wipefs_protection       # Blocks disk device write operations
-    - etc_redirect_protection # Blocks output redirection into /etc/*
-    - chmod_flag_tolerance    # Matches chmod with flags before numeric mode
+default_action: "DENY"     # Verdict when a rule evaluates to UNKNOWN
+                           # Options: DENY, ASK, REPORT, ALLOW
+                           # Note: a command that NO rule matches is ALLOW rule=none — this
+                           # setting does not apply to it.

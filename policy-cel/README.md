@@ -79,12 +79,15 @@ python3 lib/policy.py decide --command "the exact shell command"
 
 ### Configuration reference
 
-See `config.sample.yaml` for every supported field. Key fields:
+`config.sample.yaml` carries the whole surface — two keys:
 
-- `engine`: CEL engine identifier (library name)
 - `rules_dir`: Path to the directory containing CEL rule files
-- `default_action`: What happens when a rule evaluates to UNKNOWN — `ALLOW`, `DENY`, or `REPORT`
-- `log_level`: Verbosity of policy evaluation logs
+- `default_action`: What happens when a rule evaluates to UNKNOWN — `DENY` (default), `ASK`,
+  `REPORT`, or `ALLOW`. It does not apply to a command no rule matches: that is `ALLOW rule=none`.
+
+Earlier samples also listed `engine`, `log_level` and a `hardening:` block. `lib/policy.py` never
+read any of them, so they have been removed rather than documented — a config key the engine
+ignores is a control that does not exist.
 
 ---
 

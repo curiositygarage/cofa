@@ -36,8 +36,8 @@ Canonical source: https://github.com/curiositygarage/cofa
 
 ## Requirements
 
-PostgreSQL 14+ for memory, Python 3.9+ standard library for the shipped clients, Node.js 18+ only if
-you pick the Node A2A client. Nothing else is downloaded at install time.
+PostgreSQL 14+ for memory, Python 3.9+ standard library for every shipped client. Nothing else is
+downloaded at install time, and no Node.js client ships — `lib/a2a_client.py` is the only one.
 
 ## Optional
 

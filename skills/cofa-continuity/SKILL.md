@@ -20,7 +20,11 @@ Source: https://github.com/curiositygarage/cofa (component: `continuity/`)
 
 ## Install
 
+Run these from the component directory (`continuity/`); the sample config lives there, not at the
+repo root.
+
 ```bash
+cd continuity         # from the repo root
 mkdir -p ~/.config/cofa/continuity/checkpoints ~/.config/cofa/continuity/resume
 cp config.sample.yaml ~/.config/cofa/continuity/config.yaml
 ```
@@ -32,18 +36,31 @@ library only; no packages.
 
 - `title`: what the task is called.
 - `state`: where it stands right now, in enough detail to act on.
-- `next_step`: the immediate next action, not a plan.
-- `phase`: `ACTIVE` or `IDLE`. Only `ACTIVE` should trigger auto-resume on wake.
+- `next`: the immediate next action, not a plan. (The CLI flag is `--next`; the stored key, and
+  the one `resolve` reports, is `next`.)
+- `phase`: `ACTIVE` or `IDLE`. Only `ACTIVE` triggers auto-resume on wake.
 
 ## Usage
 
 ```bash
+cd continuity
 python3 lib/checkpoint.py save --title "<task>" --state "<where it stands>" --next "<next action>" --phase ACTIVE
+python3 lib/checkpoint.py resolve     # the wake decision: exit 0 = resumable, 1 = do not resume
+python3 lib/checkpoint.py show        # the checkpoint as JSON, phase and next included
 python3 lib/checkpoint.py clear
 ```
 
 Save at the start of substantive work and before any planned restart. `clear` when the work is
 genuinely finished, not when it is merely paused.
+
+**`resolve` is the wake interface — do not re-implement it by reading the file.** It is the one
+call that turns the stored record into a decision, and it returns:
+
+- `0` — resumable: the checkpoint exists and its phase is `ACTIVE`. Resume the task.
+- `1` — not resumable: no checkpoint, or a phase that must not auto-resume (`IDLE`). Stay put.
+
+Branching on the JSON yourself gets the phase rule wrong in exactly the case that matters — the
+`IDLE` checkpoint written by a deliberate stop.
 
 ## Wake behaviour
 
