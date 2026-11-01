@@ -50,9 +50,9 @@ python3 lib/a2a_client.py send --config ~/.config/cofa/a2a-mesh/config.yaml \
 | 5 | NOT-ACCEPTED: task is real and terminally failed, rejected or cancelled | resending the same content cannot help |
 | 6 | NEEDS-ACTION: task is paused on the caller (input or auth required) | continue the **same** task id |
 
-States are normalised (case-insensitive, `-` folded to `_`, a leading `TASK_STATE_` stripped), so
-`TASK_STATE_REJECTED`, `auth-required` and `REJECTED` resolve to the same thing. ACCEPTED is an
-allowlist, not a denylist: an unlisted state is not evidence the task is progressing.
+States are normalised (case-insensitive, `-` folded to `_`, any leading task-state enum prefix
+stripped), so a rejected state, `auth-required` and `REJECTED` resolve to the same thing. ACCEPTED is
+an allowlist, not a denylist: an unlisted state is not evidence the task is progressing.
 
 ## The rule that matters most
 
