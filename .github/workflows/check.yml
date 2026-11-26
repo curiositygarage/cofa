@@ -1,9 +1,8 @@
 # CI — one job per (Python version × long-term-memory client path).
 #
-# HONEST STATUS: this workflow has NOT been executed on GitHub. It was written against the
-# documented interfaces and validated only by running `checks/verify-all.sh --require-all`
-# locally on both client paths. Treat the first CI run as the test of this YAML — if it fails,
-# the failure is as likely to be here as in the code.
+# This workflow runs on every push and pull request. It has been green on `main` since 2026-11-01.
+# When it fails, read the failing step before the code: the 2026-11-26 red run was the runner, not
+# the tree (ubuntu-latest moved to 26.04, where actions/setup-python no longer has a 3.9 build).
 #
 # What it does NOT prove: agent-to-agent behaviour against a third-party A2A peer. CI exercises
 # the shipped loopback peer only. See a2a-mesh/README.md -> Limits.
@@ -21,7 +20,10 @@ on:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    # Pinned, not latest: `ubuntu-latest` moved to 26.04 and actions/setup-python has no Python 3.9
+    # build for it, so the minimum-version leg went red with "version '3.9' ... was not found for
+    # Ubuntu 26.04". Pinning keeps the 3.9 claim testable; bump this when 3.9 leaves the image.
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
