@@ -7,3 +7,5 @@ EXPECTED_SHA256  policy-cel/downloads/README.md   # variable inside a reader-aut
 YOUR_API_KEY  KEYS-REQUIRED.md   # angle-bracket placeholder the reader replaces with their own secret; the tree only uses that shape in redaction fixtures
 YOUR_API_KEY  SANITISATION.md   # same placeholder, shown as the shape to use instead of a real credential
 TASK_STATE_REJECTED  a2a-mesh/README.md   # v0.3 protocol enum spelling a peer may emit and the client normalises; an accepted INPUT value, not a COFA variable
+TELEGRAM_ALLOWED_USERS  profiles/solo-checklist.md   # Hermes-owned env var set in the agent's .env; not read by any COFA file, and the operator must be told the exact name
+TELEGRAM_HOME_CHANNEL  profiles/solo-checklist.md   # same: Hermes reads it, COFA documents it, so the exact name is the instruction

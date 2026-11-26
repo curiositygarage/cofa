@@ -13,6 +13,11 @@ branch on.
 
 Source: https://github.com/curiositygarage/cofa (component: `a2a-mesh/`)
 
+> **Opt-in, not default.** The peer lane is not part of COFA's default install. It ships only when the
+> owner has a second agent that will actually exchange tasks with this one, and is installed with
+> `bin/install-profile.sh --profile mesh`. On a single-agent machine there is no peer to name, and an
+> agent that never receives a peer lane never goes looking for one.
+
 ## Use this when
 
 - Two or more agents on different hosts need to hand work to each other.

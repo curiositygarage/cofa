@@ -1,0 +1,9 @@
+# COFA profile: mesh
+#
+# Multi-agent household, deliberate and consented. Adds the peer lane on top of solo.
+# Only choose this when the owner actually has a second agent to talk to: the component is the
+# gateway to asking "who are my peers?", and on a single-agent box there is no answer.
+long-term-memory
+policy-cel
+continuity
+a2a-mesh

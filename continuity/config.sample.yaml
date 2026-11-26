@@ -8,7 +8,7 @@
 checkpoints_dir: "~/.config/cofa/continuity/checkpoints/"
 resume_file: "~/.config/cofa/continuity/resume/LAST_TASK.md"
 
-auto_resume_phase: "ACTIVE"  # ACTIVE = resume on wake, IDLE = do not resume
+auto_resume_phase: "ACTIVE"  # ACTIVE = resume on wake, IDLE = do not resume (DONE is never resumable)
 
 checkpoint_interval_seconds: 300  # Auto-save every 5 minutes during active work
 

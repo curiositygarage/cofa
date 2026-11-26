@@ -4,6 +4,31 @@ All notable changes to this project are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project uses
 [semantic versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — 2026-11-26
+
+### Added
+- `profiles/` + `bin/install-profile.sh`: component **profiles**. `solo` is the default (memory,
+  policy-cel, continuity) and `mesh` adds `a2a-mesh`. The default is the point — a single-agent
+  household must not receive a peer lane, and an agent that never gets one never asks who its peers are.
+- `checks/verify-profiles.sh`, wired into `checks/verify-all.sh`: installs the default profile into a
+  throwaway dir and requires the result to be clean for peer-lane terms, with `a2a-mesh/` as a positive
+  control so a clean result cannot come from a dead regex.
+- `profiles/solo-checklist.md`: the timed fast lane (T+0 to T+150) plus a phase-2 backlog. A skipped gate
+  is written down, never reclassified as "partial".
+- `continuity`: `--phase DONE`. The save-phase set gains a terminal phase while `auto_resume_phase` stays
+  strict on `(ACTIVE, IDLE)`. `checks/verify.sh` gains three assertions (DONE writable, DONE not resumable,
+  unknown phase exits 2) — 13/13 pass.
+
+### Changed
+- `SETUP-GUIDE`: "Option B" is now the default profile; the peer lane moved to "Option C (opt-in)" and the
+  "discovering sibling endpoints" instruction is gone. `README` marks `a2a-mesh` opt-in.
+
+### Why
+Measured on a live engagement (2026-11-23): the shipped checkpoint library could not express a close-out,
+so the file sat `ACTIVE` a day past finished work; and the default install path handed a single-agent owner
+a peer lane that our own provenance sweep flags as `peer-agent-signal`. Both defects were in the package,
+not in the engagement.
+
 ## [Unreleased]
 
 ### Changed

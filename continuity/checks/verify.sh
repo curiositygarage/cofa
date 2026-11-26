@@ -133,6 +133,37 @@ else
   fail "negative test: IDLE checkpoint was not refused cleanly (exit $rc): $(tail -1 "$TMP/idle.err")"
 fi
 
+# --------------------------------------------------------------- DONE: close-out is expressible
+# The failure this guards (measured on a live engagement, 2026-11-23): a schema with only
+# ACTIVE/IDLE has no way to say "finished", so the file sat ACTIVE a day past the job and the
+# next session resumed completed work. Both directions must hold — DONE must be *writable*
+# and must *not* be resumable.
+python3 "$CLIENT" --config "$CFG" save --title "done task" --state "delivered, 3 rows" \
+  --next "none — job closed" --phase DONE >"$TMP/done-save.out" 2>&1
+rc=$?
+if [ "$rc" -eq 0 ] && grep -q 'phase=DONE' "$TMP/done-save.out"; then
+  pass "close-out: save accepts --phase DONE (the terminal phase exists in the schema)"
+else
+  fail "close-out: save refused --phase DONE (exit $rc): $(cat "$TMP/done-save.out")"
+fi
+
+python3 "$CLIENT" --config "$CFG" resolve >"$TMP/done.out" 2>"$TMP/done.err"
+rc=$?
+if [ "$rc" -eq 1 ] && grep -q 'phase is DONE' "$TMP/done.err" && grep -q 'auto-resume requires ACTIVE' "$TMP/done.err"; then
+  pass "close-out: a DONE checkpoint is refused for auto-resume (exit 1, reason names the phase)"
+else
+  fail "close-out: DONE was not refused cleanly (exit $rc): $(tail -1 "$TMP/done.err")"
+fi
+
+# A phase outside both sets is a usage error, never a silent write.
+python3 "$CLIENT" --config "$CFG" save --title t --state s --next n --phase BOGUS >"$TMP/bogus.out" 2>&1
+rc=$?
+if [ "$rc" -eq 2 ] && grep -q 'OP-FAILED' "$TMP/bogus.out"; then
+  pass "negative test: an unknown phase fails as usage (exit 2), not written"
+else
+  fail "negative test: unknown phase did not fail as usage (exit $rc): $(cat "$TMP/bogus.out")"
+fi
+
 # --------------------------------------------------------------- negative: cleared file
 python3 "$CLIENT" --config "$CFG" clear >/dev/null 2>&1
 python3 "$CLIENT" --config "$CFG" resolve >"$TMP/clear.out" 2>"$TMP/clear.err"

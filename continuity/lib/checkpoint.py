@@ -21,7 +21,14 @@ import time
 from pathlib import Path
 
 EXIT_OK, EXIT_NOT_RESUMABLE, EXIT_USAGE = 0, 1, 2
+
+# Two sets, deliberately different:
+#   PHASES      — what `auto_resume_phase` may be. A wake decision must never be "resume DONE work".
+#   SAVE_PHASES — what a checkpoint may be written as. Without DONE there is no way to express a
+#                 close-out, so every second job ends in the file as ACTIVE and the next session
+#                 resumes finished work. That is a schema defect, not a discipline problem.
 PHASES = ("ACTIVE", "IDLE")
+SAVE_PHASES = PHASES + ("DONE",)
 
 
 # --------------------------------------------------------------------------- config
@@ -62,8 +69,8 @@ class Paths:
 # --------------------------------------------------------------------------- operations
 def save(paths: Paths, title: str, state: str, next_step: str, phase: str) -> dict:
     phase = phase.upper()
-    if phase not in PHASES:
-        raise ValueError(f"phase must be one of {PHASES}, got {phase!r}")
+    if phase not in SAVE_PHASES:
+        raise ValueError(f"phase must be one of {SAVE_PHASES}, got {phase!r}")
     record = {
         "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "title": title,
@@ -131,7 +138,9 @@ def main(argv: list[str] | None = None) -> int:
     p_save.add_argument("--title", required=True)
     p_save.add_argument("--state", required=True)
     p_save.add_argument("--next", required=True, dest="next_step")
-    p_save.add_argument("--phase", default=None, help="ACTIVE (default) or IDLE")
+    p_save.add_argument("--phase", default=None,
+                        help="ACTIVE (default) | IDLE | DONE — DONE is the close-out: the work finished "
+                             "or failed, so a wake must not resume it")
 
     sub.add_parser("resolve", help="wake decision: exit 0 only when resumable")
     sub.add_parser("show", help="print the checkpoint as JSON")

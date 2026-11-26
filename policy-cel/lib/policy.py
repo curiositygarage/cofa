@@ -55,18 +55,6 @@ HELPERS = {
     "size": lambda value: len(value),
 }
 
-# Names a caller-supplied `--context K=V` entry must never be able to occupy. Context is merged LAST
-# (see the CLI below), so before this guard a caller could pass `--context command=harmless` and replace
-# the very text the rules were about to inspect — a DENY on `wipefs -a /dev/sdb` became ALLOW/rule=none
-# with no rule changing (external review 2026-10-14, finding CEL-002, reproduced on this tree).
-# `--context matches=shadowed` was worse: it shadowed the helper of that name, every bundled rule raised
-# RuleError, and the UNKNOWN path returned the configured default_action — an attacker-triggerable ALLOW
-# in a deployment whose operator believed the rules were protecting them. Helper names and decision names
-# are reserved for the same reason: a name a rule body may call, or a name the decider reports under, is
-# not the caller's to define. Reserved keys are REFUSED (exit 2), never silently dropped.
-PROTECTED_CONTEXT_KEYS = frozenset(
-    {"command", "tool", "path", "context", "verdict", "rule", "reason", "source", "decision"}
-) | frozenset(HELPERS)
 
 # Names a caller-supplied `--context K=V` entry must never be able to occupy. Context is merged LAST
 # (see the CLI below), so before this guard a caller could pass `--context command=harmless` and replace

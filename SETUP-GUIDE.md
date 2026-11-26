@@ -102,9 +102,12 @@ See: `continuity/README.md`
 
 ---
 
-## Option B: Install everything recommended
+## Option B: Install the default profile
 
-If you want the full framework, run these steps in order. Note that the order is convenience only — any single component works independently of the others.
+`solo` is the default, and it is what most owners want: one agent, one machine, one human. Three
+components, and the A2A peer lane is deliberately not one of them.
+
+Run these in order. The order is convenience only; any single component works independently.
 
 1. **Prepare** — Ensure PostgreSQL is available (local or Docker) for long-term-memory. Verify your agent platform supports Python/bash scripts (for verify.sh).
 
@@ -112,9 +115,40 @@ If you want the full framework, run these steps in order. Note that the order is
 
 3. **Install policy-cel** — Add policy guardrails. Configuration-heavy, minimal runtime dependency.
 
-4. **Install a2a-mesh** — Enable peer messaging. May require discovering sibling endpoints.
+4. **Install continuity** — Set up checkpoint/resume. Simplest component; quickest win.
 
-5. **Install continuity** — Set up checkpoint/resume. Simplest component; quickest win.
+Or copy the whole profile in one step:
+
+```bash
+bin/install-profile.sh --dest ~/cofa-solo        # default profile: solo
+```
+
+**What the default leaves out is the point.** A single-agent household gets no peer lane, no
+registry and no discovery card, because an agent that never receives one never goes looking for
+peers that are not there.
+
+For the 3-hour version of this profile — what a lane needs to be useful to its owner today, with the
+rest parked as a backlog — see `profiles/solo-checklist.md`. The rule that keeps it honest: a skipped
+gate is written down, never quietly reclassified as "partial".
+
+---
+
+## Option C: the peer lane (opt-in, multi-agent households only)
+
+`a2a-mesh/` is **not** in the default profile, and it stays out unless the owner has a second agent
+that will actually exchange tasks with this one. The component is the gateway to asking "who are my
+peers?" — on a single-agent box there is no answer, and it is the one question a fresh agent should
+never have a reason to ask.
+
+When the owner has said that in their own words:
+
+```bash
+bin/install-profile.sh --profile mesh --dest ~/cofa-mesh
+```
+
+Then follow `a2a-mesh/README.md`. Two habits matter: peer endpoints are supplied by the owner and
+never discovered by the agent, and an A2A endpoint is POST-only — a GET returns 404 by design and
+looks exactly like a dead port.
 
 Run the checklist in "Installation discipline" above: fan out if you can, verify each component
 after its install step, and re-run every `checks/verify.sh` yourself before declaring anything done.

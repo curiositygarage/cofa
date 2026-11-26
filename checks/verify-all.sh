@@ -111,6 +111,14 @@ gate_step "doc claims (REQUIREDCHECK strings must be printed by code)" \
 gate_step "gate selftest (the gate must be able to fail)" bin/scan-sanitisation.sh --selftest
 gate_step "portability (bash 3.2 — what macOS ships)"     checks/verify-portability.sh
 gate_step "portability selftest (it must be able to fail)" checks/verify-portability.sh --selftest
+# The profile gate (round 27). A single-agent household must not receive a peer lane, and until
+# now nothing failed when one shipped: `a2a-mesh/` sat in the default install path and in the
+# README's component table as if it were part of the product. This step installs the DEFAULT
+# profile into a throwaway dir and requires the result to be clean for peer-lane terms, with the
+# same detector fired at `a2a-mesh/` as a positive control (a clean result from a dead grep is the
+# failure mode this exists to prevent).
+gate_step "profiles (default install carries no peer lane; the detector fires)" \
+          checks/verify-profiles.sh
 # The plant matrix is the regression test for the gate's own hole classes: it builds a throwaway
 # repo per leak shape and requires the gate to exit 1. A gate_step, not a step — a matrix that
 # cannot run is a failure, never a "not verified". v3 adds the home-path shapes (Q1-Q5: macOS

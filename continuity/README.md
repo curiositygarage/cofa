@@ -10,7 +10,16 @@ Maintains a checkpoint file that records:
 - **Title**: what the current task is called
 - **State**: where things stand right now
 - **Next step**: the immediate next action
-- **Phase**: ACTIVE or IDLE (controls whether auto-resume triggers on wake)
+- **Phase**: `ACTIVE`, `IDLE` or `DONE` (controls whether auto-resume triggers on wake)
+
+Three phases, and only two of them are resumable. `ACTIVE` resumes on wake, `IDLE` does not, and
+`DONE` is the **close-out** — it records that the work finished (or failed) and why, so a wake
+refuses it. Write `DONE` in the same turn as the finish, with the outcome in `--state`. Never
+`clear` it: the snapshots keep history either way, and the next session may need the numbers.
+
+A schema with no `DONE` cannot express a close-out at all, so every second job ends in the file
+as `ACTIVE`. That is why the client separates the *saveable* phases from the *resumable* one:
+`auto_resume_phase` only accepts `ACTIVE` or `IDLE`, while `save` accepts all three.
 
 After a crash, restart, or unexpected termination, the agent reads this file first. It becomes the source of truth — not guessing, not scanning history, not improvising.
 

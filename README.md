@@ -12,10 +12,11 @@ Installing the agent is easy. Maturing it (memory, policy, comms, continuity) is
 |---|---|---|
 | **Long-Term Memory** | `long-term-memory/` | Local-first recall via mem0 + PostgreSQL. Namespaced per agent. No cloud dependency. |
 | **CEL Policy Layer** | `policy-cel/` | Policy-as-code rules that evaluate before actions. Hardened against the known pattern leaks catalogued in `policy-cel/rules/10-hardening.cel` — the rule file is the count, this line does not repeat it. |
-| **A2A Mesh Client** | `a2a-mesh/` | A2A client (pre-1.0 message shape under the v1.0 method name) — wiring and conventions. Enables two agents to exchange tasks reliably. |
 | **Continuity** | `continuity/` | Checkpoint + resume so a restart picks up the right task from a written file. Ground truth after crash. |
+| **A2A Mesh Client** *(opt-in)* | `a2a-mesh/` | Peer messaging between two agents (pre-1.0 message shape under the v1.0 method name). **Not in the default install** — a single-agent household must not ship a peer lane. |
 
-All four are **independently installable**. You may only need one.
+The first three are the default `solo` profile. The peer lane is a separate `mesh` profile, chosen
+only when the owner has a second agent to talk to: `bin/install-profile.sh --profile mesh`.
 
 ---
 

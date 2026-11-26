@@ -1,0 +1,10 @@
+# COFA profile: solo
+#
+# One agent, one machine, one human owner. No peer lane, no registry, no discovery.
+# This is the DEFAULT profile: an agent that never receives a peer lane never looks for a peer.
+#
+# Component list is the install set, in install order. Each component's own checks/verify.sh
+# still has to pass; being on this list is not evidence that it works.
+long-term-memory
+policy-cel
+continuity
